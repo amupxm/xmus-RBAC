@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -106,4 +107,34 @@ func Test_rbac_GetRole(t *testing.T) {
 			assert.Equal(t, tt.roll.Name, role.Name)
 		}
 	})
+}
+
+func Test_rbac_UpdateRole(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	defer mt.Close()
+
+	tests := []struct {
+		data Role
+		// responseData primitive.D
+		wantError bool
+	}{
+		{Role{ID: primitive.NewObjectID(), Name: "admin", Permissions: []Permission{Permission{Name: "yeeet"}}}, false},
+	}
+	for index, tt := range tests {
+		mt.Run(fmt.Sprintf("test num #%d", index), func(mt *mtest.T) {
+			var curserResponse primitive.D
+			if !tt.wantError {
+				curserResponse = bson.D{{"ok", 1}, {"value", bson.D{
+					{"_id", tt.data.ID},
+					{"name", tt.data.Name},
+					{"permissions", tt.data.Permissions},
+				}}}
+			}
+			mt.AddMockResponses(curserResponse)
+			dbCollection = mt.Coll
+			res, err := rbac{}.UpdateRole(context.Background(), tt.data)
+			assert.Nil(mt.T, err)
+			assert.Equal(mt.T, res.ID, tt.data.ID)
+		})
+	}
 }
